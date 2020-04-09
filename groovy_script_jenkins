@@ -1,0 +1,33 @@
+node{
+    def pom = readMavenPom file: 'pom.xml'
+    def version = pom.version
+    def nexus_tag = "10.148.0.31:8083/petclinic:${version}"
+    //def testing = build job: "JavaWebApp"
+    def mavenHome =  tool name: "Maven", type: "maven"
+    def mavenCMD = "${mavenHome}/bin/mvn"
+    stage('Scm checkout'){
+        git url: 'https://github.com/PrakashGit404/PetClinic.git',branch: 'master'
+    }
+    stage("Build"){
+        sh "${mavenCMD} clean package"
+    } 
+    stage('SonarQube Analysis') {
+        withSonarQubeEnv('sonarqube') { 
+          sh "${mavenCMD} sonar:sonar"
+        }
+    }
+    stage('Build Docker image') {
+        //sh "$USER"
+        //sh "sudo docker rmi tomcat:8"
+        sh "sudo docker rmi -f ${nexus_tag}"
+        sh "sudo docker build -t ${nexus_tag} ."
+        //sh "${nexus_tag}testing.getNumber()"
+    }
+    stage('Push image Nexus'){
+        sh "sudo docker login -u admin -p admin123 10.148.0.31:8083"
+        sh "sudo docker push ${nexus_tag}"
+        //sh "${nexus_tag}.${BUILD_NUMBER}"
+       
+    }
+    
+}
